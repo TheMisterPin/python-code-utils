@@ -1,0 +1,27 @@
+[
+    {
+        "brand": "Toyota",
+        "model1": "Corolla",
+        "model2": "Camry"
+    },
+    {
+        "brand": "Mercedes",
+        "model1": "300D",
+        "model2": "E250"
+    },
+    {
+        "brand": "BMW",
+        "model1": "X5",
+        "model2": "2002"
+    },
+    {
+        "brand": "Volkswagen",
+        "model1": "Vento",
+        "model2": "Beetle"
+    },
+    {
+        "brand": "Ford",
+        "model1": "Bronco",
+        "model2": "F-1250"
+    }
+]

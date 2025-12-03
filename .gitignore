@@ -1,0 +1,23 @@
+.venv/
+
+# Outputs and logs
+_outputs/
+*.log
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.py[cod]
+
+# IDEs
+.vscode/
+.idea/
+
+# Node
+node_modules/
+
+# Secrets
+Email/credentials.json
+Email/token.pickle
