@@ -61,6 +61,7 @@ file_types = [
 file_list = os.listdir(source_dir)
 
 var filesMoved = 0 
+
 for file in file_list:
     for file_type in file_types:
         if file.endswith(file_type):

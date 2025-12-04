@@ -21,3 +21,4 @@ node_modules/
 # Secrets
 Email/credentials.json
 Email/token.pickle
+_outputs/documents/
