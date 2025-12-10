@@ -2,8 +2,13 @@
 import argparse
 import os
 import re
+import sys
 from collections import Counter, defaultdict
 from datetime import datetime
+
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.output_helpers import get_output_base_dir
 
 # Match a CSS/SCSS property name at the start of a line:
 # e.g. "color: red;" -> "color"
@@ -182,10 +187,13 @@ def scan_folder(root):
       - global Counter of all properties
       - dict[family] -> Counter of properties in that family
       - dict[family] -> dict[property] -> Counter of values
+      - Counter of colors
     """
     global_counter = Counter()
     family_counters = defaultdict(Counter)
     family_value_counters = defaultdict(lambda: defaultdict(Counter))
+    color_counter = Counter()
+    important_seen = set()
 
     for dirpath, _, filenames in os.walk(root):
         for filename in filenames:
@@ -203,10 +211,18 @@ def scan_folder(root):
                             family_counters[fam][prop] += 1
                             if value:
                                 family_value_counters[fam][prop][value] += 1
+                                if fam == "color":
+                                    clean_value = value.replace(" !important", "").strip()
+                                    if " !important" in value:
+                                        if clean_value not in important_seen:
+                                            color_counter[clean_value] += 1
+                                            important_seen.add(clean_value)
+                                    else:
+                                        color_counter[clean_value] += 1
             except Exception as e:
                 print(f"[WARN] Failed to read {full_path}: {e}")
 
-    return global_counter, family_counters, family_value_counters
+    return global_counter, family_counters, family_value_counters, color_counter
 
 
 def build_summary_markdown(global_counts, family_counts, scanned_path):
@@ -288,18 +304,32 @@ def build_family_details_markdown(family, prop_value_counters, scanned_path):
     return "\n".join(lines)
 
 
-def get_output_base_dir():
-    """
-    Build base output dir ../_outputs/css/lists/MMDD
-    relative to this Python file.
-    """
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    parent_dir = os.path.dirname(script_dir)  # one level up from the script
-    date_folder = datetime.now().strftime("%m%d")
+def build_used_colors_markdown(color_counts, scanned_path):
+    lines = []
+    now = datetime.now()
+    date_str = now.strftime("%Y-%m-%d %H:%M:%S")
 
-    base_dir = os.path.join(parent_dir, "_outputs", "css", "lists", date_folder)
-    os.makedirs(base_dir, exist_ok=True)
-    return base_dir
+    lines.append(f"# Used Colors\n")
+    lines.append(f"- Generated on: **{date_str}**")
+    lines.append(f"- Scanned path: `{scanned_path}`")
+    lines.append("")
+
+    lines.append(f"Total distinct colors: **{len(color_counts)}**")
+    lines.append("")
+
+    lines.append("| Color | Count |")
+    lines.append("|-------|-------|")
+
+    for color, count in sorted(color_counts.items(), key=lambda kv: (-kv[1], kv[0])):
+        lines.append(f"| `{color}` | {count} |")
+
+    lines.append("")
+
+    return "\n".join(lines)
+
+
+# Import shared output helpers (added at the top of file)
+# from utils.output_helpers import get_output_base_dir
 
 def main():
     parser = argparse.ArgumentParser(
@@ -323,13 +353,15 @@ def main():
         print("Error: path is not a directory.")
         return
 
-    global_counts, family_counts, family_value_counters = scan_folder(root)
+    global_counts, family_counts, family_value_counters, color_counts = scan_folder(root)
 
     if not global_counts:
         print("No properties found in .scss/.css files.")
         return
 
-    out_base = get_output_base_dir()
+    date_folder = datetime.now().strftime("%m%d")
+    out_base = os.path.join(get_output_base_dir(), "lists", date_folder)
+    os.makedirs(out_base, exist_ok=True)
 
     # Summary
     summary_md = build_summary_markdown(global_counts, family_counts, root)
@@ -347,7 +379,15 @@ def main():
             f.write(details_md)
         print(f"Details for '{family}' written to:\n  {details_path}")
 
+    # Used colors
+    used_colors_md = build_used_colors_markdown(color_counts, root)
+    used_colors_path = os.path.join(out_base, "used-colors.md")
+    with open(used_colors_path, "w", encoding="utf-8") as f:
+        f.write(used_colors_md)
+    print(f"Used colors written to:\n  {used_colors_path}")
+
     print(f"\nTotal distinct properties: {len(global_counts)}")
+    print(f"Total distinct colors: {len(color_counts)}")
 
 
 if __name__ == "__main__":

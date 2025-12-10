@@ -1,5 +1,10 @@
 import pyodbc
 import os
+import sys
+
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.output_helpers import get_output_base_dir
 
 # Database connection details
 server = '172.16.100.5'
@@ -8,7 +13,7 @@ username = 'Bks'
 password = 'P1@niga'
 
 tables_folder = 'Tables'
-output_folder = 'changed-tables'
+output_folder = os.path.join(get_output_base_dir(), "changed-tables")
 checked_tables = 0
 modified_tables = 0
 os.makedirs(output_folder, exist_ok=True)

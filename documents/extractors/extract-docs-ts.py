@@ -6,7 +6,12 @@ CLI script to extract JSDoc comments from TypeScript/JavaScript files and save t
 import os
 import re
 import argparse
+import sys
 from pathlib import Path
+
+# Add parent directories to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from utils.output_helpers import get_output_base_dir
 
 # Simple JSDoc parser implementation integrated directly
 def parse_jsdoc_content(jsdoc_text):
@@ -720,14 +725,13 @@ def main():
     )
     parser.add_argument(
         "-o", "--output", 
-        default="./extracted",
-        help="Output directory for markdown files (default: ./extracted)"
+        help="Output directory for markdown files (default: auto-generated)"
     )
     args = parser.parse_args()
     if not os.path.isdir(args.folder):
         print(f"Error: '{args.folder}' is not a valid directory")
         return
-    output_dir = args.output
+    output_dir = args.output or get_output_base_dir()
     os.makedirs(output_dir, exist_ok=True)
     folder_path = Path(args.folder).resolve()
     project_name = folder_path.name

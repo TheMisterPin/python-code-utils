@@ -4,6 +4,10 @@ from pathlib import Path
 import sys
 import argparse
 
+# Add parent directories to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from utils.output_helpers import get_output_base_dir
+
 # Utilities copied/adapted from extract-endpoints.py to handle comments and strings
 def strip_string_literals(s: str) -> str:
     string_re = re.compile(r"('(?:\\.|[^'\\])*'|\"(?:\\.|[^\"\\])*\"|`(?:\\.|[^`\\])*`)", re.DOTALL)
@@ -275,8 +279,9 @@ if __name__ == '__main__':
         sys.exit(1)
 
     endpoints = find_post_endpoints(args.root_directory, anonymous_only=args.anonymousOnly)
+    output_file = args.output or os.path.join(get_output_base_dir(), "post_endpoints.md")
     if args.references:
         ts_refs = load_ts_references(args.references)
-        generate_combined_report(endpoints, ts_refs, args.output, title=args.title)
+        generate_combined_report(endpoints, ts_refs, output_file, title=args.title)
     else:
-        generate_markdown(endpoints, args.output)
+        generate_markdown(endpoints, output_file)

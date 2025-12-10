@@ -6,6 +6,10 @@ import argparse
 import time
 import json
 
+# Add parent directories to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from utils.output_helpers import get_output_base_dir
+
 def normalize_endpoint(endpoint: str) -> str:
     """Normalize endpoint string by removing query strings and trailing slashes."""
     # Remove query strings if present
@@ -163,7 +167,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     root_directory = args.root_directory
-    output_md = args.output
+    output_md = args.output or os.path.join(get_output_base_dir(), "api_references.md")
 
     if not os.path.isdir(root_directory):
         print(f"Error: Invalid directory path: {root_directory}")

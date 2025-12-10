@@ -6,7 +6,12 @@ CLI script to extract docstrings from Python files and save them as Markdown fil
 import os
 import ast
 import argparse
+import sys
 from pathlib import Path
+
+# Add parent directories to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from utils.output_helpers import get_output_base_dir
 
 
 def extract_docstring(file_path):
@@ -221,8 +226,7 @@ def main():
     )
     parser.add_argument(
         "-o", "--output", 
-        default="./extracted",
-        help="Output directory for markdown files (default: ./extracted)"
+        help="Output directory for markdown files (default: auto-generated)"
     )
     
     args = parser.parse_args()
@@ -233,7 +237,7 @@ def main():
         return
     
     # Create output directory if it doesn't exist
-    output_dir = args.output
+    output_dir = args.output or get_output_base_dir()
     os.makedirs(output_dir, exist_ok=True)
     
     # Find all Python files

@@ -1,4 +1,9 @@
 import os
+import sys
+
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.output_helpers import get_output_base_dir
 
 # File types to list (add more extensions as needed)
 file_types = ['.scss']
@@ -37,6 +42,7 @@ def generate_markdown_list(root_dir, file_types):
 
 if __name__ == '__main__':
     markdown_output = generate_markdown_list(root_dir, file_types)
-    with open('file_list.md', 'w') as f:
+    output_path = os.path.join(get_output_base_dir(), "file_list.md")
+    with open(output_path, 'w') as f:
         f.write(markdown_output)
-    print("Markdown file generated: file_list.md")
+    print("Markdown file generated: " + output_path)
