@@ -1,27 +1,37 @@
-# Source Control Helpers
+# Source control utilities
 
-These scripts capture Git history in a structured way so you can replay daily diffs or export summaries for reporting.
+Python helpers that wrap common git reporting tasks. All scripts accept a `--path` argument to point at a repository (default: current directory).
 
-## diffs_by_week.py
+## Tools
 
-**Features**
-- Enumerates commits between the provided `--since`/`--until` range and optionally filters by `--author`.
-- For each commit it parses the `git show --numstat --name-status` output, collects per-file statistics, and appends the full diff to `_outputs/rawdiffs/by-day/<YYYY-MM-DD>.patch`.
-- Writes `_outputs/summary.json` with totals for files added/modified/deleted and the lines added/removed per commit.
+### `get_diffs_branch.py`
+Compare two refs (defaults to current branch vs `main`).
 
-**How to Run**
-1. `pip install` is not required beyond Git; run the script via `python source-control/diffs_by_week.py .` from the repository root.
-2. Optional flags: `--since "7 days ago"`, `--until "yesterday"`, `--author "Your Name"`.
-3. The tool cleans `_outputs/rawdiffs/by-day` before writing new `.patch` files, so review the directory after the run.
+Examples:
+- Show filename and stat summary: `python source-control/get_diffs_branch.py --base main --branch feature-branch`
+- Show only file names: `python source-control/get_diffs_branch.py --name-only`
+- Include patch hunks: `python source-control/get_diffs_branch.py --patch`
 
-**Usage Example**
-```
-$ python source-control/diffs_by_week.py --since "30 days ago"
-Wrote daily diffs to: _outputs/rawdiffs/by-day
-Wrote summary.json to: _outputs/summary.json
-```
+### `get_commit_diffs.py`
+Export diffs for every file in a commit into markdown files under `_outputs/source-control/commits/<short-hash>/diffs`.
 
-## get_diffs_branch.py
+Examples:
+- Generate outputs for a commit: `python source-control/get_commit_diffs.py <commit-ish>`
+- Specify a different repo path: `python source-control/get_commit_diffs.py <commit-ish> --path /path/to/repo`
+- Change output root folder: `python source-control/get_commit_diffs.py <commit-ish> --output-root /tmp/outputs`
 
-**Status**
-- Currently an empty placeholder. Future work will export the diffs of an entire branch into files, similar to `diffs_by_week.py` but scoped to a branch name.
+### `get_file_diffs.py`
+Show diffs for a single file either against another ref or across a date range.
+
+Examples:
+- Compare the file in `HEAD` against `main`: `python source-control/get_file_diffs.py path/to/file --ref main --target HEAD`
+- Compare two arbitrary refs: `python source-control/get_file_diffs.py path/to/file --ref release --target feature`
+- Show all diffs for the file since a date: `python source-control/get_file_diffs.py path/to/file --since 2024-01-01`
+- Limit by date range: `python source-control/get_file_diffs.py path/to/file --since 2024-01-01 --until 2024-06-30`
+
+### `diffs_by_week.py`
+Group commit messages by day within a time window (default last 30 days).
+
+Examples:
+- Default report for the current repo: `python source-control/diffs_by_week.py`
+- Filter by author and date: `python source-control/diffs_by_week.py --author "Alice" --since "2 weeks ago" --until "yesterday"`
