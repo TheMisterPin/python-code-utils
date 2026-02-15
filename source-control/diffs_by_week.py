@@ -9,6 +9,9 @@ import shutil
 from collections import defaultdict
 from datetime import date
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.gui_helpers import FieldSpec, build_form, render_output, run_script_capture
+
 
 def run_git(cmd):
     try:
@@ -45,6 +48,37 @@ def parse_numstat_value(token):
         return int(normalized)
     except ValueError:
         return None
+
+
+def should_launch_gui() -> bool:
+    return "--cli" not in sys.argv and ("--gui" in sys.argv or len(sys.argv) == 1)
+
+
+def launch_gui() -> None:
+    fields = [
+        FieldSpec(key="path", label="Repository folder", field_type="dir", default="."),
+        FieldSpec(key="since", label="Since (date or relative)", field_type="text", default="30 days ago"),
+        FieldSpec(key="until", label="Until (optional)", field_type="text", default=""),
+        FieldSpec(key="author", label="Author filter (optional)", field_type="text", default=""),
+    ]
+
+    def on_submit(values, output_widget):
+        args = []
+        if values["path"]:
+            args.append(values["path"])
+        if values["since"]:
+            args.extend(["--since", values["since"]])
+        if values["until"]:
+            args.extend(["--until", values["until"]])
+        if values["author"]:
+            args.extend(["--author", values["author"]])
+
+        code, stdout, stderr = run_script_capture(__file__, args)
+        if code != 0 and not stderr:
+            stderr = f"Command failed with exit code {code}."
+        render_output(output_widget, stdout, stderr)
+
+    build_form("Git Diffs by Week", fields, on_submit)
 
 
 def get_commits_metadata(repo_path, since=None, until=None, author=None):
@@ -252,6 +286,20 @@ def main():
         default=None,
         help='Filter by author. Example: "Michele".'
     )
+    parser.add_argument(
+        "--gui",
+        action="store_true",
+        help="Launch the GUI.",
+    )
+    parser.add_argument(
+        "--cli",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
+
+    if should_launch_gui():
+        launch_gui()
+        return
 
     args = parser.parse_args()
     repo_path = args.path

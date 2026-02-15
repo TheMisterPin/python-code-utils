@@ -8,6 +8,9 @@ import sys
 from pathlib import Path
 from typing import List
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.gui_helpers import FieldSpec, build_form, render_output, run_script_capture
+
 
 def run_git(repo_path: str, *args: str) -> str:
     """Run a git command inside repo_path and return stdout.
@@ -101,10 +104,50 @@ def parse_args() -> argparse.Namespace:
         default="_outputs",
         help="Root output directory (default: _outputs).",
     )
+    parser.add_argument(
+        "--gui",
+        action="store_true",
+        help="Launch the GUI.",
+    )
+    parser.add_argument(
+        "--cli",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
     return parser.parse_args()
 
 
+def should_launch_gui() -> bool:
+    return "--cli" not in sys.argv and ("--gui" in sys.argv or len(sys.argv) == 1)
+
+
+def launch_gui() -> None:
+    fields = [
+        FieldSpec(key="commit", label="Commit hash or ref", field_type="text", required=True),
+        FieldSpec(key="path", label="Repository folder", field_type="dir", default="."),
+        FieldSpec(key="output_root", label="Output root folder", field_type="dir", default="_outputs"),
+    ]
+
+    def on_submit(values, output_widget):
+        args: List[str] = [values["commit"]]
+        if values["path"]:
+            args.extend(["--path", values["path"]])
+        if values["output_root"]:
+            args.extend(["--output-root", values["output_root"]])
+
+        code, stdout, stderr = run_script_capture(__file__, args)
+        if code != 0 and not stderr:
+            stderr = f"Command failed with exit code {code}."
+        render_output(output_widget, stdout, stderr)
+
+    build_form("Git Commit Diffs Export", fields, on_submit)
+
+
 def main() -> None:
+    if should_launch_gui():
+        launch_gui()
+        return
+
     args = parse_args()
     repo_path = args.path
 

@@ -8,6 +8,7 @@ from datetime import datetime
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.gui_helpers import FieldSpec, build_form, render_output, run_script_capture
 from utils.output_helpers import get_output_base_dir
 
 # Match a CSS/SCSS property name at the start of a line:
@@ -122,6 +123,27 @@ FAMILY_PATTERNS = {
         "pointer-events"
     ],
 }
+
+
+def should_launch_gui() -> bool:
+    return "--cli" not in sys.argv and ("--gui" in sys.argv or len(sys.argv) == 1)
+
+
+def launch_gui() -> None:
+    fields = [
+        FieldSpec(key="path", label="Folder to scan", field_type="dir", default="."),
+    ]
+
+    def on_submit(values, output_widget):
+        args = []
+        if values["path"]:
+            args.append(values["path"])
+        code, stdout, stderr = run_script_capture(__file__, args)
+        if code != 0 and not stderr:
+            stderr = f"Command failed with exit code {code}."
+        render_output(output_widget, stdout, stderr)
+
+    build_form("CSS/SCSS Property Scanner", fields, on_submit)
 
 
 def is_css_file(filename):
@@ -344,6 +366,20 @@ def main():
         default=".",
         help="Root folder to scan (default: current directory).",
     )
+    parser.add_argument(
+        "--gui",
+        action="store_true",
+        help="Launch the GUI.",
+    )
+    parser.add_argument(
+        "--cli",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
+    if should_launch_gui():
+        launch_gui()
+        return
+
     args = parser.parse_args()
 
     root = os.path.abspath(args.path)

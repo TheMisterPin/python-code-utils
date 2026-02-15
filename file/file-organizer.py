@@ -1,106 +1,121 @@
+#!/usr/bin/env python3
+import argparse
 import os
 import shutil
-import tkinter 
+import sys
+from typing import Dict, List, Optional, Tuple
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.gui_helpers import FieldSpec, build_form, render_output, run_script_capture
 
 
-source_dir = "C:\\Users\\pinmi\\Downloads"
-img_dir = "C:\\Users\\pinmi\\Downloads\\images"
-video_dir = "C:\\Users\\pinmi\\Downloads\\videos"
-audio_dir = "C:\\Users\\pinmi\\Downloads\\audio"
-docs_dir = "C:\\Users\\pinmi\\Downloads\\docs"
-zip_dir = "C:\\Users\\pinmi\\Downloads\\zip"
-unity_dir = "C:\\Users\\pinmi\\Downloads\\unity"
-apps_dir = "C:\\Users\\pinmi\\Downloads\\apps"
-icons_dir = "C:\\Users\\pinmi\\Downloads\\icons"
-code_dir = "C:\\Users\\pinmi\\Downloads\\code"
+FILE_GROUPS: Dict[str, List[str]] = {
+    "images": [".jpg", ".png", ".jpeg", ".gif", ".webp"],
+    "videos": [".mp4"],
+    "audio": [".mp3"],
+    "docs": [".pdf", ".doc", ".txt"],
+    "archives": [".zip", ".rar", ".7z"],
+    "unity": [".unitypackage"],
+    "apps": [".exe", ".msi"],
+    "icons": [".svg"],
+    "code": [".ts", ".tsx", ".js", ".json", ".html", ".css", ".py", ".c", ".cs"],
+}
 
-directories = [
-    img_dir,
-    video_dir,
-    audio_dir,
-    docs_dir,
-    zip_dir,
-    unity_dir,
-    apps_dir,
-    icons_dir,
-    code_dir,
-]
-for directory in directories:
-    if not os.path.exists(directory):
-        os.makedirs(directory)
 
-file_types = [
-    ".jpg",
-    ".png",
-    ".jpeg",
-    ".gif",
-    ".mp4",
-    ".mp3",
-    ".pdf",
-    ".zip",
-    ".unitypackage",
-    ".webp",
-    ".exe",
-    ".msi",
-    ".rar",
-    ".7z",
-    ".svg",
-    ".txt",
-    ".doc",
-    ".tsx",
-    "ts",
-    ".js",
-    ".json",
-    ".html",
-    ".css",
-    ".py",
-    ".c",
-    ".cs",
-]
+def ensure_directories(base_dir: str) -> Dict[str, str]:
+    destinations = {}
+    for group in FILE_GROUPS:
+        dest = os.path.join(base_dir, group)
+        os.makedirs(dest, exist_ok=True)
+        destinations[group] = dest
+    return destinations
 
-file_list = os.listdir(source_dir)
 
-var filesMoved = 0 
+def find_group_for_extension(extension: str) -> Optional[str]:
+    for group, extensions in FILE_GROUPS.items():
+        if extension in extensions:
+            return group
+    return None
 
-for file in file_list:
-    for file_type in file_types:
-        if file.endswith(file_type):
-            if (
-                file_type == ".jpg"
-                or file_type == ".png"
-                or file_type == ".jpeg"
-                or file_type == ".gif"
-                or file_type == ".webp"
-            ):
-                shutil.move(os.path.join(source_dir, file), img_dir)
-            elif file_type == ".mp4" or file_type == ".mp3":
-                shutil.move(os.path.join(source_dir, file), video_dir)
-            elif file_type == ".pdf" or file_type == ".doc" or file_type == ".txt":
-                shutil.move(os.path.join(source_dir, file), docs_dir)
-            elif file_type == ".zip" or file_type == ".rar" or file_type == ".7z":
-                shutil.move(os.path.join(source_dir, file), zip_dir)
-            elif file_type == ".unitypackage":
-                shutil.move(os.path.join(source_dir, file), unity_dir)
-            elif file_type == ".exe" or file_type == ".msi":
-                shutil.move(os.path.join(source_dir, file), apps_dir)
-            elif file_type == ".svg":
-                shutil.move(os.path.join(source_dir, file), icons_dir)
-            elif (
-                file_type == ".js"
-                or file_type == ".json"
-                or file_type == ".html"
-                or file_type == ".tsx"
-                or file_type == ".tsx"
-                or file_type == ".cs"
-                or file_type == ".c"
-                or file_type == ".py"
-                or file_type == ".css"
-                or file_type == ".ts"
-            ):
-                shutil.move(os.path.join(source_dir, file), code_dir)
 
-            filesMoved += 1
+def organize_files(source_dir: str, destination_root: str) -> Tuple[int, int]:
+    destinations = ensure_directories(destination_root)
+    file_list = os.listdir(source_dir)
+    moved = 0
+    skipped = 0
 
-            else:
-                continue
-            break
+    for filename in file_list:
+        source_path = os.path.join(source_dir, filename)
+        if not os.path.isfile(source_path):
+            continue
+
+        ext = os.path.splitext(filename)[1].lower()
+        group = find_group_for_extension(ext)
+        if not group:
+            skipped += 1
+            continue
+
+        shutil.move(source_path, os.path.join(destinations[group], filename))
+        moved += 1
+
+    return moved, skipped
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Organize files into folders by type.")
+    parser.add_argument("--source", default=os.getcwd(), help="Source directory to organize.")
+    parser.add_argument(
+        "--destination",
+        default=None,
+        help="Destination root for organized folders (defaults to source).",
+    )
+    parser.add_argument("--gui", action="store_true", help="Launch the GUI.")
+    parser.add_argument("--cli", action="store_true", help=argparse.SUPPRESS)
+    return parser.parse_args()
+
+
+def should_launch_gui() -> bool:
+    return "--cli" not in sys.argv and ("--gui" in sys.argv or len(sys.argv) == 1)
+
+
+def launch_gui() -> None:
+    fields = [
+        FieldSpec(key="source", label="Source folder", field_type="dir", default=os.getcwd(), required=True),
+        FieldSpec(key="destination", label="Destination root (optional)", field_type="dir", default=""),
+    ]
+
+    def on_submit(values, output_widget):
+        args = ["--source", values["source"]]
+        if values["destination"]:
+            args.extend(["--destination", values["destination"]])
+        code, stdout, stderr = run_script_capture(__file__, args)
+        if code != 0 and not stderr:
+            stderr = f"Command failed with exit code {code}."
+        render_output(output_widget, stdout, stderr)
+
+    build_form("File Organizer", fields, on_submit)
+
+
+def main() -> None:
+    if should_launch_gui():
+        launch_gui()
+        return
+
+    args = parse_args()
+    source_dir = args.source
+    destination_root = args.destination or source_dir
+
+    if not os.path.isdir(source_dir):
+        print(f"Error: Source directory does not exist: {source_dir}")
+        sys.exit(1)
+
+    if not os.path.isdir(destination_root):
+        print(f"Error: Destination directory does not exist: {destination_root}")
+        sys.exit(1)
+
+    moved, skipped = organize_files(source_dir, destination_root)
+    print(f"Moved {moved} files. Skipped {skipped} files.")
+
+
+if __name__ == "__main__":
+    main()
