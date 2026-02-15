@@ -2,11 +2,17 @@
 
 `email-deleter.py` opens a Tkinter dialog, authenticates with Gmail through OAuth, and deletes batches of unread promotional emails older than ~45 days. It is designed for light inbox maintenance when promotions start stacking up.
 
+`email-important-recovery.py` follows the same OAuth + Tkinter pattern to find important emails that landed in Trash or Spam, list their details, and optionally restore them to the Inbox.
+
+`email-opener.py` uses the same authentication pattern to open a single Gmail message by ID, preview key headers/snippet, and optionally open it in the browser.
+
 ## Features
 
 - Handles OAuth flows via `google-auth-oauthlib`; the first run will open the browser to authorize and write `token.pickle` for future runs.
 - Provides a small GUI to confirm the deletion session, pick a batch size, and show progress while it calls `users.messages().delete`.
 - Automatically skips emails that are marked as read or do not belong to the `promotions` category.
+- Recovers important emails by removing `TRASH`/`SPAM` labels and re-adding `INBOX`, while listing Subject/From/Date.
+- Opens a single email by Gmail message ID and offers a browser shortcut to the Gmail UI.
 
 ## Requirements
 
@@ -18,6 +24,8 @@
 
 1. Start from the repository root and run `python Email/email-deleter.py`.
 2. Confirm the GUI prompt, choose how many unread promotional emails to delete per batch, and let the script iterate until you stop it.
+3. Run `python Email/email-important-recovery.py` to list important messages in Trash/Spam and optionally restore them.
+4. Run `python Email/email-opener.py` and enter a Gmail message ID to preview/open it.
 
 ## Usage Example
 
