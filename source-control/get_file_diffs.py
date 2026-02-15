@@ -7,6 +7,9 @@ import subprocess
 import sys
 from typing import List, Optional
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.gui_helpers import FieldSpec, build_form, render_output, run_script_capture
+
 
 def run_git(repo_path: str, *args: str) -> str:
     """Run a git command inside repo_path and return stdout.
@@ -97,10 +100,76 @@ def parse_args() -> argparse.Namespace:
         "--until",
         help="Upper date bound for diffs (inclusive). Can be used with or without --since.",
     )
+    parser.add_argument(
+        "--gui",
+        action="store_true",
+        help="Launch the GUI.",
+    )
+    parser.add_argument(
+        "--cli",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
     return parser.parse_args()
 
 
+def should_launch_gui() -> bool:
+    return "--cli" not in sys.argv and ("--gui" in sys.argv or len(sys.argv) == 1)
+
+
+def launch_gui() -> None:
+    fields = [
+        FieldSpec(key="path", label="Repository folder", field_type="dir", default="."),
+        FieldSpec(key="file", label="File to diff", field_type="file", required=True),
+        FieldSpec(
+            key="mode",
+            label="Comparison mode",
+            field_type="choice",
+            default="Compare refs",
+            options=["Compare refs", "Date range"],
+        ),
+        FieldSpec(key="ref", label="Base ref", field_type="text", default="main"),
+        FieldSpec(key="target", label="Target ref", field_type="text", default="HEAD"),
+        FieldSpec(key="since", label="Since date (optional)", field_type="text", default=""),
+        FieldSpec(key="until", label="Until date (optional)", field_type="text", default=""),
+    ]
+
+    def on_submit(values, output_widget):
+        repo_path = values["path"] or "."
+        file_path = values["file"]
+        if os.path.isabs(file_path) and os.path.isabs(repo_path):
+            try:
+                relative = os.path.relpath(file_path, repo_path)
+                if not relative.startswith(".."):
+                    file_path = relative
+            except ValueError:
+                pass
+
+        args: List[str] = [file_path, "--path", repo_path]
+        if values["mode"] == "Date range":
+            if values["since"]:
+                args.extend(["--since", values["since"]])
+            if values["until"]:
+                args.extend(["--until", values["until"]])
+        else:
+            if values["ref"]:
+                args.extend(["--ref", values["ref"]])
+            if values["target"]:
+                args.extend(["--target", values["target"]])
+
+        code, stdout, stderr = run_script_capture(__file__, args)
+        if code != 0 and not stderr:
+            stderr = f"Command failed with exit code {code}."
+        render_output(output_widget, stdout, stderr)
+
+    build_form("Git File Diff", fields, on_submit)
+
+
 def main() -> None:
+    if should_launch_gui():
+        launch_gui()
+        return
+
     args = parse_args()
     repo_path = args.path
     file_path = args.file

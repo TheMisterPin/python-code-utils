@@ -2,9 +2,13 @@
 """Utility to show git diffs between branches without shell scripts."""
 
 import argparse
+import os
 import subprocess
 import sys
 from typing import List
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.gui_helpers import FieldSpec, build_form, render_output, run_script_capture
 
 
 def run_git(repo_path: str, *args: str) -> str:
@@ -106,11 +110,62 @@ def parse_args() -> argparse.Namespace:
         action="store_false",
         help="Do not include the --stat summary.",
     )
+    parser.add_argument(
+        "--gui",
+        action="store_true",
+        help="Launch the GUI.",
+    )
+    parser.add_argument(
+        "--cli",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
     parser.set_defaults(stat=True)
     return parser.parse_args()
 
 
+def should_launch_gui() -> bool:
+    return "--cli" not in sys.argv and ("--gui" in sys.argv or len(sys.argv) == 1)
+
+
+def launch_gui() -> None:
+    fields = [
+        FieldSpec(key="path", label="Repository folder", field_type="dir", default="."),
+        FieldSpec(key="branch", label="Branch to compare (optional)", field_type="text", default=""),
+        FieldSpec(key="base", label="Base branch", field_type="text", default="main"),
+        FieldSpec(key="name_only", label="Show filenames only", field_type="bool", default=False),
+        FieldSpec(key="patch", label="Include patch hunks", field_type="bool", default=False),
+        FieldSpec(key="stat", label="Include stats summary", field_type="bool", default=True),
+    ]
+
+    def on_submit(values, output_widget):
+        args: List[str] = []
+        repo_path = values["path"] or "."
+        args.append(repo_path)
+        if values["branch"]:
+            args.extend(["--branch", values["branch"]])
+        if values["base"]:
+            args.extend(["--base", values["base"]])
+        if values["name_only"]:
+            args.append("--name-only")
+        if values["patch"]:
+            args.append("--patch")
+        if not values["stat"]:
+            args.append("--no-stat")
+
+        code, stdout, stderr = run_script_capture(__file__, args)
+        if code != 0 and not stderr:
+            stderr = f"Command failed with exit code {code}."
+        render_output(output_widget, stdout, stderr)
+
+    build_form("Git Diff: Branch Compare", fields, on_submit)
+
+
 def main() -> None:
+    if should_launch_gui():
+        launch_gui()
+        return
+
     args = parse_args()
     repo_path: str = args.path
 
